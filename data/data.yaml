@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 11
+names: ['Baixo', 'Bolinha', 'Cima', 'Direita', 'Esquerda', 'L', 'Quadro', 'R', 'Start', 'Triangulo', 'X']
+
+roboflow:
+  workspace: andre-nsmek
+  project: psp-7y5j0
+  version: 8
+  license: Private
+  url: https://app.roboflow.com/andre-nsmek/psp-7y5j0/8

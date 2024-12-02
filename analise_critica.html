@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Análise Crítica do Modelo YOLO</title>
+    <style>
+      /* Reset básico */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* Estilo do corpo da página */
+      body {
+        font-family: "Open Sans", Arial, sans-serif;
+        background-color: #f0f2f5;
+        color: #333;
+        margin: 0;
+      }
+
+      /* Cabeçalho */
+      header {
+        background: linear-gradient(45deg, #c2345a, #6d1b4b);
+        padding: 20px 0;
+        text-align: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      .logo img {
+        max-width: 150px;
+        height: auto;
+      }
+
+      /* Conteúdo principal */
+      main {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Títulos */
+      h1 {
+        font-size: 2.5em;
+        color: #c2345a;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #c2345a;
+      }
+
+      h2 {
+        font-size: 2em;
+        color: #6d1b4b;
+        padding-bottom: 8px;
+        margin-top: 20px;
+      }
+
+      /* Parágrafos */
+      p {
+        line-height: 1.6;
+        margin-bottom: 16px;
+        text-align: justify;
+      }
+
+      /* Imagens */
+      .images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .images figure {
+        flex: 1 1 calc(50% - 20px);
+        text-align: center;
+      }
+
+      .images img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+      }
+
+      .images img:hover {
+        transform: scale(1.05);
+      }
+
+      figcaption {
+        margin-top: 10px;
+        font-style: italic;
+        color: #666;
+      }
+
+      /* Tabela */
+      .table-container {
+        overflow-x: auto;
+        margin: 20px 0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      table thead {
+        background-color: #c2345a;
+        color: #fff;
+      }
+
+      table th,
+      table td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      table tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      /* Listas */
+      ul {
+        margin-left: 20px;
+        list-style-type: disc;
+      }
+
+      li {
+        margin-bottom: 8px;
+      }
+
+      /* Links */
+      a {
+        color: #4a90e2;
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+
+      a:hover {
+        color: #2c3e50;
+      }
+
+      /* Rodapé */
+      footer {
+        background: linear-gradient(45deg, #c2345a, #6d1b4b);
+        color: #fff;
+        text-align: center;
+        padding: 20px 0;
+        font-size: 1.2em;
+        margin-top: 20px;
+        position: relative;
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      footer::before {
+        content: "";
+        display: block;
+        width: 60px;
+        height: 3px;
+        background: #fff;
+        margin: 0 auto 15px;
+        border-radius: 2px;
+      }
+
+      footer p {
+        margin: 0;
+        letter-spacing: 1px;
+        align-items: center;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Cabeçalho com o logo -->
+    <header>
+      <div class="logo">
+        <img
+          src="https://sites.pucpr.br/empresas/wp-content/uploads/sites/44/2022/08/logo-pucpr-icon-1.png"
+          alt="Logo"
+        />
+      </div>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <main>
+      <section>
+        <h1>Análise Crítica</h1>
+        <p>
+          O modelo alcançou uma precisão de <strong>0,96924</strong> na última
+          época de treinamento
+          (<em>./runs/train/detect/train25/results.csv</em>), um resultado
+          excelente. No entanto, observou-se que a precisão em tempo real ficou
+          aquém do valor alcançado no treinamento. O modelo demonstrou uma
+          tendência a confundir a classe "bolinha" com outras classes em tempo
+          real, possivelmente devido à alta quantidade de amostras desta classe
+          e à semelhança visual com outros símbolos.
+        </p>
+
+        <h2>Exemplos de Erros na Detecção</h2>
+        <div class="images">
+          <figure>
+            <img
+              src="analise-critica-assets/errou2.png"
+              alt="Erro na detecção do Triângulo"
+            />
+            <figcaption>Triângulo</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="analise-critica-assets/image.png"
+              alt="Erro na detecção do R"
+            />
+            <figcaption>Letra R</figcaption>
+          </figure>
+        </div>
+
+        <h2>Exemplos de Acertos na Detecção</h2>
+        <div class="images">
+          <figure>
+            <img
+              src="analise-critica-assets/acertou.png"
+              alt="Acerto na detecção do Triângulo"
+            />
+            <figcaption>Triângulo</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="analise-critica-assets/acertou2.png"
+              alt="Acerto na detecção do R"
+            />
+            <figcaption>Letra R</figcaption>
+          </figure>
+        </div>
+
+        <h2>Exemplo de acerto na classe bolinha</h2>
+        <div class="images">
+          <figure>
+            <img
+              src="analise-critica-assets/acertoubolinha.png"
+              alt="Acerto na detecção da bolinha"
+            />
+            <figcaption>Bolinha</figcaption>
+          </figure>
+          <p>
+            A confusão do modelo entre classes ocorre devido à semelhança visual
+            entre "bolinha" e outras classes, que apresentam padrões comuns como
+            o número de dedos levantados ou a posição das mãos. Uma possível
+            solução seria aumentar a diversidade de amostras de cada classe,
+            ajudando o modelo a diferenciar melhor entre os sinais.
+          </p>
+        </div>
+
+        <div class="images">
+          <figure>
+            <img
+              src="analise-critica-assets\explicação.png"
+              alt="Matriz de Confusão Normalizada"
+            />
+          </figure>
+        </div>
+
+        <h2>Matriz de Confusão</h2>
+        <div class="images">
+          <figure>
+            <img
+              src="runs/detect/train25/confusion_matrix_normalized.png"
+              alt="Matriz de Confusão Normalizada"
+            />
+          </figure>
+        </div>
+        <p>
+          Apesar das limitações de quantidade e diversidade nas amostras de cada
+          classe, o desempenho geral do modelo foi considerado satisfatório,
+          levando em conta as restrições enfrentadas durante o desenvolvimento.
+        </p>
+
+        <h2>Métricas por Época</h2>
+        <p>Abaixo, apresentamos as métricas do modelo por época:</p>
+
+        <div class="table-container">
+          <table border="1" class="dataframe">
+            <thead>
+              <tr style="text-align: right;">
+                <th>epoch</th>
+                <th>time</th>
+                <th>train/box_loss</th>
+                <th>train/cls_loss</th>
+                <th>train/dfl_loss</th>
+                <th>metrics/precision(B)</th>
+                <th>metrics/recall(B)</th>
+                <th>metrics/mAP50(B)</th>
+                <th>metrics/mAP50-95(B)</th>
+                <th>val/box_loss</th>
+                <th>val/cls_loss</th>
+                <th>val/dfl_loss</th>
+                <th>lr/pg0</th>
+                <th>lr/pg1</th>
+                <th>lr/pg2</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>66.2983</td>
+                <td>1.07763</td>
+                <td>2.96393</td>
+                <td>1.34360</td>
+                <td>0.83004</td>
+                <td>0.84111</td>
+                <td>0.93529</td>
+                <td>0.72638</td>
+                <td>0.85078</td>
+                <td>1.04249</td>
+                <td>1.25430</td>
+                <td>0.000222</td>
+                <td>0.000222</td>
+                <td>0.000222</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>125.2920</td>
+                <td>1.02206</td>
+                <td>1.64318</td>
+                <td>1.25435</td>
+                <td>0.85719</td>
+                <td>0.88580</td>
+                <td>0.96215</td>
+                <td>0.72823</td>
+                <td>0.91374</td>
+                <td>0.95441</td>
+                <td>1.26435</td>
+                <td>0.000440</td>
+                <td>0.000440</td>
+                <td>0.000440</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>182.4900</td>
+                <td>0.99565</td>
+                <td>1.28842</td>
+                <td>1.22469</td>
+                <td>0.83827</td>
+                <td>0.85000</td>
+                <td>0.94565</td>
+                <td>0.74964</td>
+                <td>0.79748</td>
+                <td>0.82984</td>
+                <td>1.19879</td>
+                <td>0.000653</td>
+                <td>0.000653</td>
+                <td>0.000653</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>241.7430</td>
+                <td>0.99083</td>
+                <td>1.07917</td>
+                <td>1.21685</td>
+                <td>0.93126</td>
+                <td>0.91587</td>
+                <td>0.98419</td>
+                <td>0.77393</td>
+                <td>0.82365</td>
+                <td>0.69752</td>
+                <td>1.22170</td>
+                <td>0.000647</td>
+                <td>0.000647</td>
+                <td>0.000647</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>300.3840</td>
+                <td>0.94805</td>
+                <td>0.91003</td>
+                <td>1.19376</td>
+                <td>0.97237</td>
+                <td>0.91894</td>
+                <td>0.98294</td>
+                <td>0.77374</td>
+                <td>0.81029</td>
+                <td>0.61509</td>
+                <td>1.20619</td>
+                <td>0.000641</td>
+                <td>0.000641</td>
+                <td>0.000641</td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td>357.0520</td>
+                <td>0.91666</td>
+                <td>0.82203</td>
+                <td>1.17270</td>
+                <td>0.94211</td>
+                <td>0.96314</td>
+                <td>0.98572</td>
+                <td>0.77685</td>
+                <td>0.84334</td>
+                <td>0.49491</td>
+                <td>1.20425</td>
+                <td>0.000634</td>
+                <td>0.000634</td>
+                <td>0.000634</td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td>413.7360</td>
+                <td>0.92197</td>
+                <td>0.76332</td>
+                <td>1.17204</td>
+                <td>0.93672</td>
+                <td>0.93478</td>
+                <td>0.96791</td>
+                <td>0.78208</td>
+                <td>0.79454</td>
+                <td>0.49976</td>
+                <td>1.18969</td>
+                <td>0.000627</td>
+                <td>0.000627</td>
+                <td>0.000627</td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td>470.3010</td>
+                <td>0.90299</td>
+                <td>0.73011</td>
+                <td>1.16314</td>
+                <td>0.95422</td>
+                <td>0.92177</td>
+                <td>0.97757</td>
+                <td>0.78813</td>
+                <td>0.80594</td>
+                <td>0.51560</td>
+                <td>1.17770</td>
+                <td>0.000621</td>
+                <td>0.000621</td>
+                <td>0.000621</td>
+              </tr>
+              <tr>
+                <td>9</td>
+                <td>530.2000</td>
+                <td>0.88515</td>
+                <td>0.68682</td>
+                <td>1.15194</td>
+                <td>0.97098</td>
+                <td>0.96414</td>
+                <td>0.98208</td>
+                <td>0.78715</td>
+                <td>0.81315</td>
+                <td>0.44166</td>
+                <td>1.19359</td>
+                <td>0.000614</td>
+                <td>0.000614</td>
+                <td>0.000614</td>
+              </tr>
+              <tr>
+                <td>10</td>
+                <td>588.5890</td>
+                <td>0.86728</td>
+                <td>0.66969</td>
+                <td>1.14669</td>
+                <td>0.94345</td>
+                <td>0.96510</td>
+                <td>0.98913</td>
+                <td>0.78888</td>
+                <td>0.82792</td>
+                <td>0.44689</td>
+                <td>1.18856</td>
+                <td>0.000608</td>
+                <td>0.000608</td>
+                <td>0.000608</td>
+              </tr>
+              <tr>
+                <td>11</td>
+                <td>645.6060</td>
+                <td>0.88238</td>
+                <td>0.63893</td>
+                <td>1.14718</td>
+                <td>0.94906</td>
+                <td>0.96005</td>
+                <td>0.98259</td>
+                <td>0.77258</td>
+                <td>0.81282</td>
+                <td>0.45463</td>
+                <td>1.19856</td>
+                <td>0.000601</td>
+                <td>0.000601</td>
+                <td>0.000601</td>
+              </tr>
+              <tr>
+                <td>12</td>
+                <td>702.5710</td>
+                <td>0.86295</td>
+                <td>0.62156</td>
+                <td>1.14083</td>
+                <td>0.95431</td>
+                <td>0.96559</td>
+                <td>0.97961</td>
+                <td>0.78479</td>
+                <td>0.82628</td>
+                <td>0.43164</td>
+                <td>1.17873</td>
+                <td>0.000594</td>
+                <td>0.000594</td>
+                <td>0.000594</td>
+              </tr>
+              <tr>
+                <td>13</td>
+                <td>759.5950</td>
+                <td>0.84987</td>
+                <td>0.62037</td>
+                <td>1.13324</td>
+                <td>0.95116</td>
+                <td>0.92721</td>
+                <td>0.96774</td>
+                <td>0.78968</td>
+                <td>0.76626</td>
+                <td>0.48639</td>
+                <td>1.15862</td>
+                <td>0.000588</td>
+                <td>0.000588</td>
+                <td>0.000588</td>
+              </tr>
+              <tr>
+                <td>14</td>
+                <td>819.5010</td>
+                <td>0.84385</td>
+                <td>0.59011</td>
+                <td>1.13298</td>
+                <td>0.96535</td>
+                <td>0.96990</td>
+                <td>0.98668</td>
+                <td>0.78829</td>
+                <td>0.79691</td>
+                <td>0.39976</td>
+                <td>1.17513</td>
+                <td>0.000581</td>
+                <td>0.000581</td>
+                <td>0.000581</td>
+              </tr>
+              <tr>
+                <td>15</td>
+                <td>878.8520</td>
+                <td>0.82375</td>
+                <td>0.56574</td>
+                <td>1.11267</td>
+                <td>0.96588</td>
+                <td>0.98308</td>
+                <td>0.98479</td>
+                <td>0.79723</td>
+                <td>0.79032</td>
+                <td>0.38458</td>
+                <td>1.18188</td>
+                <td>0.000575</td>
+                <td>0.000575</td>
+                <td>0.000575</td>
+              </tr>
+              <tr>
+                <td>16</td>
+                <td>936.2210</td>
+                <td>0.82095</td>
+                <td>0.56239</td>
+                <td>1.11875</td>
+                <td>0.96118</td>
+                <td>0.95210</td>
+                <td>0.98350</td>
+                <td>0.80488</td>
+                <td>0.76444</td>
+                <td>0.42136</td>
+                <td>1.15978</td>
+                <td>0.000568</td>
+                <td>0.000568</td>
+                <td>0.000568</td>
+              </tr>
+              <tr>
+                <td>17</td>
+                <td>993.5770</td>
+                <td>0.82418</td>
+                <td>0.54775</td>
+                <td>1.11213</td>
+                <td>0.97113</td>
+                <td>0.97400</td>
+                <td>0.98980</td>
+                <td>0.82018</td>
+                <td>0.74530</td>
+                <td>0.35363</td>
+                <td>1.14668</td>
+                <td>0.000561</td>
+                <td>0.000561</td>
+                <td>0.000561</td>
+              </tr>
+              <tr>
+                <td>18</td>
+                <td>1053.8700</td>
+                <td>0.81421</td>
+                <td>0.53663</td>
+                <td>1.11266</td>
+                <td>0.95259</td>
+                <td>0.96488</td>
+                <td>0.98301</td>
+                <td>0.80542</td>
+                <td>0.77567</td>
+                <td>0.40045</td>
+                <td>1.17807</td>
+                <td>0.000555</td>
+                <td>0.000555</td>
+                <td>0.000555</td>
+              </tr>
+              <tr>
+                <td>19</td>
+                <td>1111.9700</td>
+                <td>0.81774</td>
+                <td>0.53785</td>
+                <td>1.11583</td>
+                <td>0.96379</td>
+                <td>0.95299</td>
+                <td>0.98762</td>
+                <td>0.81533</td>
+                <td>0.75569</td>
+                <td>0.38222</td>
+                <td>1.14155</td>
+                <td>0.000548</td>
+                <td>0.000548</td>
+                <td>0.000548</td>
+              </tr>
+              <tr>
+                <td>20</td>
+                <td>1170.2800</td>
+                <td>0.81081</td>
+                <td>0.53781</td>
+                <td>1.11066</td>
+                <td>0.96490</td>
+                <td>0.97429</td>
+                <td>0.99050</td>
+                <td>0.80545</td>
+                <td>0.79396</td>
+                <td>0.38540</td>
+                <td>1.17039</td>
+                <td>0.000542</td>
+                <td>0.000542</td>
+                <td>0.000542</td>
+              </tr>
+              <tr>
+                <td>21</td>
+                <td>1231.0800</td>
+                <td>0.79303</td>
+                <td>0.52237</td>
+                <td>1.10330</td>
+                <td>0.96068</td>
+                <td>0.97431</td>
+                <td>0.98767</td>
+                <td>0.80788</td>
+                <td>0.77481</td>
+                <td>0.42036</td>
+                <td>1.17265</td>
+                <td>0.000535</td>
+                <td>0.000535</td>
+                <td>0.000535</td>
+              </tr>
+              <tr>
+                <td>22</td>
+                <td>1293.5000</td>
+                <td>0.78874</td>
+                <td>0.49845</td>
+                <td>1.09851</td>
+                <td>0.96559</td>
+                <td>0.96999</td>
+                <td>0.98873</td>
+                <td>0.81243</td>
+                <td>0.75058</td>
+                <td>0.37625</td>
+                <td>1.15173</td>
+                <td>0.000528</td>
+                <td>0.000528</td>
+                <td>0.000528</td>
+              </tr>
+              <tr>
+                <td>23</td>
+                <td>1357.4700</td>
+                <td>0.78769</td>
+                <td>0.50313</td>
+                <td>1.09869</td>
+                <td>0.96558</td>
+                <td>0.96394</td>
+                <td>0.98639</td>
+                <td>0.80519</td>
+                <td>0.77029</td>
+                <td>0.42650</td>
+                <td>1.16780</td>
+                <td>0.000522</td>
+                <td>0.000522</td>
+                <td>0.000522</td>
+              </tr>
+              <tr>
+                <td>24</td>
+                <td>1418.3200</td>
+                <td>0.78565</td>
+                <td>0.49372</td>
+                <td>1.09428</td>
+                <td>0.96554</td>
+                <td>0.96863</td>
+                <td>0.98628</td>
+                <td>0.81294</td>
+                <td>0.73214</td>
+                <td>0.39035</td>
+                <td>1.15821</td>
+                <td>0.000515</td>
+                <td>0.000515</td>
+                <td>0.000515</td>
+              </tr>
+              <tr>
+                <td>25</td>
+                <td>1478.8000</td>
+                <td>0.77605</td>
+                <td>0.48732</td>
+                <td>1.09142</td>
+                <td>0.97531</td>
+                <td>0.96604</td>
+                <td>0.98863</td>
+                <td>0.82265</td>
+                <td>0.74188</td>
+                <td>0.37634</td>
+                <td>1.15116</td>
+                <td>0.000509</td>
+                <td>0.000509</td>
+                <td>0.000509</td>
+              </tr>
+              <tr>
+                <td>26</td>
+                <td>1540.9000</td>
+                <td>0.77690</td>
+                <td>0.49505</td>
+                <td>1.09095</td>
+                <td>0.97295</td>
+                <td>0.95118</td>
+                <td>0.97919</td>
+                <td>0.81213</td>
+                <td>0.74133</td>
+                <td>0.41528</td>
+                <td>1.14609</td>
+                <td>0.000502</td>
+                <td>0.000502</td>
+                <td>0.000502</td>
+              </tr>
+              <tr>
+                <td>27</td>
+                <td>1606.3600</td>
+                <td>0.76699</td>
+                <td>0.47564</td>
+                <td>1.08604</td>
+                <td>0.97171</td>
+                <td>0.96906</td>
+                <td>0.98680</td>
+                <td>0.82008</td>
+                <td>0.72312</td>
+                <td>0.35049</td>
+                <td>1.13955</td>
+                <td>0.000495</td>
+                <td>0.000495</td>
+                <td>0.000495</td>
+              </tr>
+              <tr>
+                <td>28</td>
+                <td>1670.3300</td>
+                <td>0.75171</td>
+                <td>0.46124</td>
+                <td>1.08117</td>
+                <td>0.96954</td>
+                <td>0.96553</td>
+                <td>0.98571</td>
+                <td>0.80832</td>
+                <td>0.75077</td>
+                <td>0.37759</td>
+                <td>1.16208</td>
+                <td>0.000489</td>
+                <td>0.000489</td>
+                <td>0.000489</td>
+              </tr>
+              <tr>
+                <td>29</td>
+                <td>1735.6100</td>
+                <td>0.76163</td>
+                <td>0.45956</td>
+                <td>1.08278</td>
+                <td>0.97344</td>
+                <td>0.96358</td>
+                <td>0.98734</td>
+                <td>0.81403</td>
+                <td>0.74848</td>
+                <td>0.36295</td>
+                <td>1.16369</td>
+                <td>0.000482</td>
+                <td>0.000482</td>
+                <td>0.000482</td>
+              </tr>
+              <tr>
+                <td>30</td>
+                <td>1800.2800</td>
+                <td>0.75392</td>
+                <td>0.45825</td>
+                <td>1.08152</td>
+                <td>0.97749</td>
+                <td>0.96713</td>
+                <td>0.99053</td>
+                <td>0.82864</td>
+                <td>0.73397</td>
+                <td>0.34039</td>
+                <td>1.14926</td>
+                <td>0.000476</td>
+                <td>0.000476</td>
+                <td>0.000476</td>
+              </tr>
+              <tr>
+                <td>31</td>
+                <td>1869.6300</td>
+                <td>0.74843</td>
+                <td>0.45488</td>
+                <td>1.07623</td>
+                <td>0.96658</td>
+                <td>0.96264</td>
+                <td>0.98628</td>
+                <td>0.82044</td>
+                <td>0.75543</td>
+                <td>0.42382</td>
+                <td>1.15816</td>
+                <td>0.000469</td>
+                <td>0.000469</td>
+                <td>0.000469</td>
+              </tr>
+              <tr>
+                <td>32</td>
+                <td>1930.5500</td>
+                <td>0.74292</td>
+                <td>0.45129</td>
+                <td>1.07627</td>
+                <td>0.96651</td>
+                <td>0.97529</td>
+                <td>0.98769</td>
+                <td>0.81830</td>
+                <td>0.74648</td>
+                <td>0.36146</td>
+                <td>1.16779</td>
+                <td>0.000462</td>
+                <td>0.000462</td>
+                <td>0.000462</td>
+              </tr>
+              <tr>
+                <td>33</td>
+                <td>1988.2600</td>
+                <td>0.74552</td>
+                <td>0.44759</td>
+                <td>1.07547</td>
+                <td>0.96235</td>
+                <td>0.97289</td>
+                <td>0.99041</td>
+                <td>0.81669</td>
+                <td>0.75301</td>
+                <td>0.35919</td>
+                <td>1.15157</td>
+                <td>0.000456</td>
+                <td>0.000456</td>
+                <td>0.000456</td>
+              </tr>
+              <tr>
+                <td>34</td>
+                <td>2046.0300</td>
+                <td>0.74297</td>
+                <td>0.44221</td>
+                <td>1.07334</td>
+                <td>0.96937</td>
+                <td>0.95963</td>
+                <td>0.97841</td>
+                <td>0.81081</td>
+                <td>0.74261</td>
+                <td>0.39414</td>
+                <td>1.14623</td>
+                <td>0.000449</td>
+                <td>0.000449</td>
+                <td>0.000449</td>
+              </tr>
+              <tr>
+                <td>35</td>
+                <td>2106.5600</td>
+                <td>0.73843</td>
+                <td>0.44293</td>
+                <td>1.07277</td>
+                <td>0.96830</td>
+                <td>0.97200</td>
+                <td>0.98813</td>
+                <td>0.82646</td>
+                <td>0.74005</td>
+                <td>0.35553</td>
+                <td>1.16160</td>
+                <td>0.000442</td>
+                <td>0.000442</td>
+                <td>0.000442</td>
+              </tr>
+              <tr>
+                <td>36</td>
+                <td>2170.4100</td>
+                <td>0.74092</td>
+                <td>0.43462</td>
+                <td>1.07202</td>
+                <td>0.96979</td>
+                <td>0.97153</td>
+                <td>0.98496</td>
+                <td>0.81802</td>
+                <td>0.76606</td>
+                <td>0.36019</td>
+                <td>1.18349</td>
+                <td>0.000436</td>
+                <td>0.000436</td>
+                <td>0.000436</td>
+              </tr>
+              <tr>
+                <td>37</td>
+                <td>2232.0000</td>
+                <td>0.72053</td>
+                <td>0.42756</td>
+                <td>1.06272</td>
+                <td>0.96839</td>
+                <td>0.96592</td>
+                <td>0.98402</td>
+                <td>0.81641</td>
+                <td>0.74554</td>
+                <td>0.36845</td>
+                <td>1.15952</td>
+                <td>0.000429</td>
+                <td>0.000429</td>
+                <td>0.000429</td>
+              </tr>
+              <tr>
+                <td>38</td>
+                <td>2291.3800</td>
+                <td>0.72416</td>
+                <td>0.42393</td>
+                <td>1.06575</td>
+                <td>0.96741</td>
+                <td>0.96979</td>
+                <td>0.98446</td>
+                <td>0.81672</td>
+                <td>0.75782</td>
+                <td>0.36297</td>
+                <td>1.17356</td>
+                <td>0.000423</td>
+                <td>0.000423</td>
+                <td>0.000423</td>
+              </tr>
+              <tr>
+                <td>39</td>
+                <td>2352.0700</td>
+                <td>0.72431</td>
+                <td>0.43015</td>
+                <td>1.06380</td>
+                <td>0.96287</td>
+                <td>0.97034</td>
+                <td>0.98362</td>
+                <td>0.81363</td>
+                <td>0.75190</td>
+                <td>0.36519</td>
+                <td>1.15875</td>
+                <td>0.000416</td>
+                <td>0.000416</td>
+                <td>0.000416</td>
+              </tr>
+              <tr>
+                <td>40</td>
+                <td>2414.7400</td>
+                <td>0.71220</td>
+                <td>0.41865</td>
+                <td>1.06242</td>
+                <td>0.96924</td>
+                <td>0.96621</td>
+                <td>0.98857</td>
+                <td>0.81941</td>
+                <td>0.74591</td>
+                <td>0.34927</td>
+                <td>1.15883</td>
+                <td>0.000409</td>
+                <td>0.000409</td>
+                <td>0.000409</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h1>Justificativas</h1>
+
+        <h2>Uso da YOLO</h2>
+        <p>
+          Optamos pelo modelo YOLO para detecção de objetos em tempo real devido
+          à sua alta precisão e desempenho. Testamos inicialmente uma CNN, que
+          não apresentou resultados satisfatórios em detecção e localização de
+          objetos em tempo real, o que motivou a escolha do YOLO.
+        </p>
+
+        <p>
+          Também testamos os modelos YOLOv10-L e YOLOv10, mas ambos exigiram um
+          tempo de treinamento superior ao prazo disponível. Assim, optamos pelo
+          modelo YOLOv11n, mais leve e que pôde ser treinado a tempo. Foram
+          planejadas 100 épocas, mas o modelo convergiu em 40 épocas devido ao
+          critério de paciência de 10 épocas.
+        </p>
+
+        <h2>Dataset</h2>
+        <p>
+          Iniciamos com um dataset de American Sign Language (ASL), mas a
+          quantidade de amostras foi insuficiente para o resultado esperado.
+          Decidimos, então, criar um dataset próprio, o que permitiu maior
+          controle e personalização para o nosso projeto.
+        </p>
+
+        <p>
+          Agradecemos aos colegas que participaram do projeto, que nos deram uma
+          "mãozinha" 🤭 para a criação do dataset:
+        </p>
+
+        <ul>
+          <li>Carlens Oslim</li>
+          <li>Rafael Schmitz</li>
+          <li>Ricardo Taverna</li>
+          <li>Lucas Kreutzer</li>
+          <li>Gabriel Ernesto</li>
+          <li>Thiago Krügel</li>
+        </ul>
+
+        <p>
+          Sem a ajuda de todos, a criação do dataset não teria sido possível.
+          Nosso sincero agradecimento a cada um.
+        </p>
+
+        <h2>Rotulações e Bounding Boxes</h2>
+        <p>
+          As rotulações e bounding boxes foram feitas manualmente, pois não
+          havia tempo hábil para desenvolver uma ferramenta automática. Tentamos
+          criar nossa própria ferramenta de anotação (<a
+            href="https://github.com/Kyutzy/custom-annotation-tool"
+            target="_blank"
+            >GitHub</a
+          >), mas surgiram dificuldades técnicas, principalmente no cálculo das
+          coordenadas quando a imagem era rotacionada. Optamos pela ferramenta
+          Roboflow (<a href="https://app.roboflow.com/" target="_blank"
+            >Roboflow</a
+          >), que atendeu às nossas necessidades com eficiência.
+        </p>
+
+        <h2>Treinamento</h2>
+        <p>
+          O treinamento foi realizado em uma máquina com as seguintes
+          especificações:
+        </p>
+        <ul>
+          <li>Processador: Intel Core i7-13700H</li>
+          <li>Memória: 32GB</li>
+          <li>GPU: Nvidia RTX 4050 Laptop</li>
+          <li>Sistema Operacional: Windows 11</li>
+        </ul>
+
+        <p>
+          Optamos por treinar o modelo localmente para facilitar a detecção de
+          objetos em tempo real com OpenCV, garantindo um desempenho consistente
+          para o objetivo do projeto.
+        </p>
+      </section>
+
+      <section>
+        <h1>Participantes</h1>
+        <p><strong>Nome:</strong> André Luiz Kovalski</p>
+        <p><strong>Nome:</strong> Cesar Cunha Ziobro</p>
+        <p><strong>Nome:</strong> Marco Vinicius Costódio Pellizzaro</p>
+        <p><strong>Nome:</strong> Thiago Krügel</p>
+      </section>
+    </main>
+
+    <footer>
+      <p>Um forte abraço! 🫡</p>
+    </footer>
+  </body>
+</html>
